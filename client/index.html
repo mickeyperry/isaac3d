@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Isaac3D</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="brand" title="3D rigid-body physics for After Effects">ISAAC3D</div>
+      <div class="comp" id="compLabel">—</div>
+      <button class="btn small" id="refreshBtn" title="Re-read layers from After Effects (selection, or all layers if nothing is selected)">Refresh</button>
+    </header>
+
+    <section class="preview">
+      <div class="canvas-wrap"><canvas id="cv"></canvas></div>
+      <div class="transport">
+        <button class="btn icon" id="playBtn" title="Play / Pause">&#9654;</button>
+        <button class="btn icon" id="stopBtn" title="Back to start">&#9632;</button>
+        <input type="range" id="frameSlider" min="0" max="0" value="0">
+        <div class="frame-label" id="frameLabel">0 / 0</div>
+        <label class="chk" title="Move the AE time indicator while scrubbing"><input type="checkbox" id="syncTime"> sync AE</label>
+      </div>
+      <div class="transport views">
+        <span class="lbl">View</span>
+        <div class="seg" id="viewSeg">
+          <button class="btn small" data-view="front" title="Front view: X right, Y down (the comp as the camera sees it)">Front (x,y)</button>
+          <button class="btn small" data-view="top" title="Top view: X right, Z up (looking down at the scene)">Top (x,z)</button>
+          <button class="btn small" data-view="side" title="Side view: Z right, Y down (looking from the right)">Side (z,y)</button>
+          <button class="btn small" data-view="3d" title="Perspective view: drag to orbit, shift-drag / right-drag to pan, wheel to zoom, double-click to reset">3D</button>
+        </div>
+        <span class="spacer"></span>
+        <span class="muted" id="viewHint"></span>
+      </div>
+      <div class="transport views view-hint muted hidden" id="viewHint3d">drag orbit · shift-drag pan · wheel zoom · dbl-click reset</div>
+    </section>
+
+    <section class="panel" id="worldPanel">
+      <div class="section-title">World</div>
+      <div class="grid">
+        <label>Gravity <input type="number" data-w="gravity" step="0.1"></label>
+        <label>Angle° <input type="number" data-w="gravityAngle" step="1" title="Gravity direction in the XY plane (90 = down)"></label>
+        <label>Px / m <input type="number" data-w="ppm" step="10" min="1"></label>
+        <label>Substeps <input type="number" data-w="substeps" step="1" min="1" max="60"></label>
+        <label>Time × <input type="number" data-w="timeScale" step="0.1" min="0.01"></label>
+        <label>Bounce <input type="number" data-w="boundsRestitution" step="0.05" min="0" max="1" title="Bounciness of the comp walls"></label>
+        <label>Depth <input type="number" data-w="depth" step="50" min="0" title="Half-depth of the world in px (back wall at +depth, front wall at -depth). 0 = comp width"></label>
+        <label>Card thick. <input type="number" data-w="cardThickness" step="1" min="0.1" title="Default thickness (px) given to flat layers"></label>
+        <label>Solver it. <input type="number" data-w="solverIterations" step="1" min="1" max="60" title="Constraint solver iterations per substep"></label>
+      </div>
+      <div class="row wrap">
+        <span class="lbl">Walls</span>
+        <label class="chk"><input type="checkbox" data-w="floor"> floor</label>
+        <label class="chk"><input type="checkbox" data-w="ceiling"> ceiling</label>
+        <label class="chk"><input type="checkbox" data-w="left"> left</label>
+        <label class="chk"><input type="checkbox" data-w="right"> right</label>
+        <label class="chk"><input type="checkbox" data-w="back"> back</label>
+        <label class="chk"><input type="checkbox" data-w="front"> front</label>
+      </div>
+      <div class="row">
+        <span class="lbl">Sim</span>
+        <label class="chk" title="Let resting bodies fall asleep (faster, more stable stacks)"><input type="checkbox" data-w="allowSleep"> allow sleep</label>
+      </div>
+      <div class="row">
+        <span class="lbl">Range</span>
+        <input type="number" id="startFrame" step="1" min="0" title="Start frame"> –
+        <input type="number" id="endFrame" step="1" min="0" title="End frame">
+        <button class="btn small" id="rangeWork">Work area</button>
+        <button class="btn small" id="rangeComp">Comp</button>
+      </div>
+    </section>
+
+    <section class="panel" id="blastPanel">
+      <div class="section-title">
+        Blasts <span class="muted" id="blastCount"></span>
+        <span class="spacer"></span>
+        <label class="chk" title="While on, clicking the preview moves the selected blast there (sets the two coordinates visible in the current view; in 3D the click lands on the blast's Z plane)"><input type="checkbox" id="blastPlace"> place by click</label>
+        <button class="btn small" id="blastAdd" title="Add a blast at the current preview frame, in the comp center (z = 0)">+ Blast</button>
+      </div>
+      <div id="blastList" class="blast-list"></div>
+      <div id="blastDetail" class="body-detail hidden"></div>
+    </section>
+
+    <section class="panel bodies">
+      <div class="section-title">
+        Bodies <span class="muted" id="bodyCount"></span>
+        <span class="spacer"></span>
+        <button class="btn small" data-setall="dynamic">All dynamic</button>
+        <button class="btn small" data-setall="static">All static</button>
+      </div>
+      <div id="bodyList" class="body-list"></div>
+      <div id="bodyDetail" class="body-detail hidden"></div>
+    </section>
+
+    <section class="panel bake">
+      <div class="row wrap">
+        <label class="chk"><input type="checkbox" data-b="unparent"> unparent</label>
+        <label class="chk"><input type="checkbox" data-b="clearRange"> clear keys in range</label>
+        <label class="chk"><input type="checkbox" data-b="linear"> linear keys</label>
+        <label class="chk"><input type="checkbox" data-b="rotation"> rotation</label>
+        <label class="chk" title="Turn 2D layers into 3D layers so they get Position Z and Rotation X/Y keys"><input type="checkbox" data-b="make3D"> make 2D layers 3D</label>
+        <label class="chk">every <input type="number" data-b="step" min="1" max="10" step="1" class="tiny"> f</label>
+      </div>
+      <button class="btn primary" id="bakeBtn">Bake to keyframes</button>
+    </section>
+
+    <footer id="status">Loading…</footer>
+  </div>
+
+  <script src="cannon-es.umd.js"></script>
+  <script src="geometry.js"></script>
+  <!-- three.js r147 (UMD) + loaders for 3D model layers. CEP exposes Node's module/exports/define on window, which
+       makes UMD builds export to module.exports instead of window.THREE — hide them while the vendor scripts run. -->
+  <script>(function (w) { w.__nodeGlobals = { module: w.module, exports: w.exports, define: w.define }; try { w.module = undefined; w.exports = undefined; w.define = undefined; } catch (e) { } })(window);</script>
+  <script src="vendor/three.min.js"></script>
+  <script src="vendor/fflate.min.js"></script>
+  <script src="vendor/NURBSUtils.js"></script>
+  <script src="vendor/NURBSCurve.js"></script>
+  <script src="vendor/ConvexHull.js"></script>
+  <script src="vendor/GLTFLoader.js"></script>
+  <script src="vendor/OBJLoader.js"></script>
+  <script src="vendor/FBXLoader.js"></script>
+  <script>(function (w) { var g = w.__nodeGlobals; if (g) { try { w.module = g.module; w.exports = g.exports; w.define = g.define; } catch (e) { } } })(window);</script>
+  <script src="models.js"></script>
+  <script src="sim3d.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
