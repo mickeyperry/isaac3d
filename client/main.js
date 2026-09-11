@@ -273,6 +273,8 @@
       '<label class="chk"><input type="checkbox" data-d="fixedRotation"' + (cfg.fixedRotation ? ' checked' : '') + '> lock rotation</label>' +
       '<label class="chk" title="Move in X/Y and rotate about Z only (like the 2D panel). Default on for 2D layers."><input type="checkbox" data-d="planar"' + ((cfg.planar === undefined ? !(info && info.is3D) : cfg.planar) ? ' checked' : '') + '> lock to comp plane</label>' +
       '<label class="chk"><input type="checkbox" data-d="collide"' + (cfg.collide !== false ? ' checked' : '') + '> collides</label>' +
+      '<label class="chk" title="all: hits everything · solo: only static / kinematic bodies and the walls · world: follow the World toggle">collides with <select data-d="collideWith">' +
+      optionList(['world', 'all', 'solo'], cfg.collideWith || 'world') + '</select></label>' +
       '</div>';
     if (info && !info.is3D) html += '<div class="row muted">2D layer — it is simulated as a card at z = 0' + (state.bake.make3D ? ' and will be made 3D when baked.' : '; only Position XY and Rotation Z will be baked.') + '</div>';
     if (info && info.kind === 'model') {
@@ -294,7 +296,7 @@
   $('#bodyDetail').addEventListener('change', function (e) {
     var k = e.target.getAttribute('data-d'); if (!k) return;
     var cfg = state.cfgs[state.selectedId];
-    cfg[k] = (e.target.type === 'checkbox') ? e.target.checked : num(e.target.value, cfg[k]);
+    cfg[k] = (e.target.type === 'checkbox') ? e.target.checked : (e.target.tagName === 'SELECT' ? e.target.value : num(e.target.value, cfg[k]));
     if (k === 'thickness' && cfg.thickness < 0) { cfg.thickness = 0; e.target.value = 0; }
     persist(); scheduleSim();
   });
@@ -968,6 +970,9 @@
     } else host('bake', payload, done);
   }
   $('#bakeBtn').addEventListener('click', bake);
+
+  // debug hook (DevTools on the .debug port): window.__isaac3d.state.result holds the last simulation
+  window.__isaac3d = { state: state, version: SIM3D.version };
 
   // ---------- boot ----------
   renderWorld(); renderBake(); renderBlasts(); renderViewButtons(); draw();
