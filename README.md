@@ -13,6 +13,12 @@ in the preview.
 
 ![Isaac3D panel demo](docs/demo.gif)
 
+<details><summary>Full panel</summary>
+
+![Isaac3D panel](docs/hero.png)
+
+</details>
+
 Free & open source · Windows · After Effects 2020+ (model layers: AE 2025+) · [Project page](https://mickeyperry.github.io/AESCRIPTS/Isaac3D/)
 
 ## Install
@@ -81,6 +87,7 @@ AE bounds.
 - `client/geometry.js` — 2D affine transforms, bezier sampling, convex hull, rounded rects, polystars.
 - `client/main.js`, `index.html`, `style.css` — the panel. `client/vendor/` — three.js r147 + loaders (UMD).
 - `test/run_node_test.js` — headless smoke test: `node test/run_node_test.js [model files...]`.
+- `test/render_panel.js` — renders the panel in headless Chromium with a mocked AE host (the demo GIF comes from here).
 
 ## Roadmap
 

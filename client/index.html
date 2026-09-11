@@ -7,105 +7,221 @@
 </head>
 <body>
   <div id="app">
-    <header>
-      <div class="brand" title="3D rigid-body physics for After Effects">ISAAC3D</div>
-      <div class="comp" id="compLabel">—</div>
-      <button class="btn small" id="refreshBtn" title="Re-read layers from After Effects (selection, or all layers if nothing is selected)">Refresh</button>
-    </header>
+    <!-- Header -->
+    <div class="header">
+      <div class="header-left">
+        <svg class="logo" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="url(#logoGrad)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <defs>
+            <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ff00c8"/>
+              <stop offset="100%" stop-color="#7b2ff7"/>
+            </linearGradient>
+          </defs>
+          <!-- isometric cube -->
+          <path d="M12 2.5 20 7v10l-8 4.5L4 17V7z"/>
+          <path d="M4 7l8 4.5L20 7M12 11.5V21.5"/>
+          <!-- sphere resting on the front edge -->
+          <circle cx="17.5" cy="18.5" r="3" fill="#0d0d14"/>
+          <path d="M14.6 19.3q2.9-1.6 5.8 0" opacity="0.7"/>
+        </svg>
+        <div class="title-block">
+          <div class="title">ISAAC3D</div>
+          <div class="tagline" id="compLabel">Open a composition</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="icon-btn" id="refreshBtn" title="Re-read layers from After Effects (selection, or all layers if nothing is selected)">&#8635;</button>
+      </div>
+    </div>
 
-    <section class="preview">
-      <div class="canvas-wrap"><canvas id="cv"></canvas></div>
+    <div class="content">
+      <!-- Preview -->
+      <div class="preview-container" id="previewContainer">
+        <canvas id="cv"></canvas>
+      </div>
       <div class="transport">
-        <button class="btn icon" id="playBtn" title="Play / Pause">&#9654;</button>
-        <button class="btn icon" id="stopBtn" title="Back to start">&#9632;</button>
+        <button class="pill-btn" id="playBtn" title="Play / Pause">&#9654;</button>
+        <button class="pill-btn" id="stopBtn" title="Back to start">&#9632;</button>
         <input type="range" id="frameSlider" min="0" max="0" value="0">
         <div class="frame-label" id="frameLabel">0 / 0</div>
-        <label class="chk" title="Move the AE time indicator while scrubbing"><input type="checkbox" id="syncTime"> sync AE</label>
+        <label class="toggle-switch mini" title="Move the AE time indicator while scrubbing">
+          <input type="checkbox" id="syncTime"><span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-label small">sync AE</span>
       </div>
-      <div class="transport views">
-        <span class="lbl">View</span>
-        <div class="seg" id="viewSeg">
-          <button class="btn small" data-view="front" title="Front view: X right, Y down (the comp as the camera sees it)">Front (x,y)</button>
-          <button class="btn small" data-view="top" title="Top view: X right, Z up (looking down at the scene)">Top (x,z)</button>
-          <button class="btn small" data-view="side" title="Side view: Z right, Y down (looking from the right)">Side (z,y)</button>
-          <button class="btn small" data-view="3d" title="Perspective view: drag to orbit, shift-drag / right-drag to pan, wheel to zoom, double-click to reset">3D</button>
+      <div class="view-row">
+        <div class="pill-group" id="viewSeg">
+          <button class="chip" data-view="front" title="Front view: X right, Y down (the comp as the camera sees it)">Front</button>
+          <button class="chip" data-view="top" title="Top view: X right, Z up (looking down at the scene)">Top</button>
+          <button class="chip" data-view="side" title="Side view: Z right, Y down (looking from the right)">Side</button>
+          <button class="chip" data-view="3d" title="Perspective view: drag to orbit, shift-drag / right-drag to pan, wheel to zoom, double-click to reset">3D</button>
         </div>
         <span class="spacer"></span>
-        <span class="muted" id="viewHint"></span>
+        <span class="hint" id="viewHint"></span>
       </div>
-      <div class="transport views view-hint muted hidden" id="viewHint3d">drag orbit · shift-drag pan · wheel zoom · dbl-click reset</div>
-    </section>
+      <div class="view-row hint hidden" id="viewHint3d">drag orbit &middot; shift-drag pan &middot; wheel zoom &middot; dbl-click reset</div>
 
-    <section class="panel" id="worldPanel">
-      <div class="section-title">World</div>
-      <div class="grid">
-        <label>Gravity <input type="number" data-w="gravity" step="0.1"></label>
-        <label>Angle° <input type="number" data-w="gravityAngle" step="1" title="Gravity direction in the XY plane (90 = down)"></label>
-        <label>Px / m <input type="number" data-w="ppm" step="10" min="1"></label>
-        <label>Substeps <input type="number" data-w="substeps" step="1" min="1" max="60"></label>
-        <label>Time × <input type="number" data-w="timeScale" step="0.1" min="0.01"></label>
-        <label>Bounce <input type="number" data-w="boundsRestitution" step="0.05" min="0" max="1" title="Bounciness of the comp walls"></label>
-        <label>Depth <input type="number" data-w="depth" step="50" min="0" title="Half-depth of the world in px (back wall at +depth, front wall at -depth). 0 = comp width"></label>
-        <label>Card thick. <input type="number" data-w="cardThickness" step="1" min="0.1" title="Default thickness (px) given to flat layers"></label>
-        <label>Solver it. <input type="number" data-w="solverIterations" step="1" min="1" max="60" title="Constraint solver iterations per substep"></label>
-      </div>
-      <div class="row wrap">
-        <span class="lbl">Walls</span>
-        <label class="chk"><input type="checkbox" data-w="floor"> floor</label>
-        <label class="chk"><input type="checkbox" data-w="ceiling"> ceiling</label>
-        <label class="chk"><input type="checkbox" data-w="left"> left</label>
-        <label class="chk"><input type="checkbox" data-w="right"> right</label>
-        <label class="chk"><input type="checkbox" data-w="back"> back</label>
-        <label class="chk"><input type="checkbox" data-w="front"> front</label>
-      </div>
-      <div class="row">
-        <span class="lbl">Sim</span>
-        <label class="chk" title="Let resting bodies fall asleep (faster, more stable stacks)"><input type="checkbox" data-w="allowSleep"> allow sleep</label>
-      </div>
-      <div class="row">
-        <span class="lbl">Range</span>
-        <input type="number" id="startFrame" step="1" min="0" title="Start frame"> –
-        <input type="number" id="endFrame" step="1" min="0" title="End frame">
-        <button class="btn small" id="rangeWork">Work area</button>
-        <button class="btn small" id="rangeComp">Comp</button>
-      </div>
-    </section>
+      <!-- 01 World -->
+      <div class="card" id="worldCard">
+        <div class="card-head" data-collapse="worldCard">
+          <span class="card-title"><span class="step">01</span>World</span>
+          <span class="chev">&#9660;</span>
+        </div>
+        <div class="card-body">
+          <div class="control-row">
+            <span class="control-label" title="m/s² — 9.8 is Earth">Gravity</span>
+            <input type="range" data-ws="gravity" min="0" max="30" step="0.1">
+            <input type="number" class="num-input" data-w="gravity" step="0.1">
+          </div>
+          <div class="control-row">
+            <span class="control-label" title="Gravity direction in the XY plane (90 = down)">Angle</span>
+            <input type="range" data-ws="gravityAngle" min="-180" max="180" step="1">
+            <input type="number" class="num-input" data-w="gravityAngle" step="1"><span class="unit">&deg;</span>
+          </div>
+          <div class="control-row">
+            <span class="control-label" title="Pixels per meter — bigger = smaller world, snappier motion">Scale</span>
+            <input type="range" data-ws="ppm" min="10" max="500" step="10">
+            <input type="number" class="num-input" data-w="ppm" step="10" min="1"><span class="unit">px/m</span>
+          </div>
+          <div class="control-row">
+            <span class="control-label" title="Simulation speed multiplier">Speed</span>
+            <input type="range" data-ws="timeScale" min="0.1" max="3" step="0.1">
+            <input type="number" class="num-input" data-w="timeScale" step="0.1" min="0.01"><span class="unit">&times;</span>
+          </div>
+          <div class="control-row">
+            <span class="control-label" title="Bounciness of the comp walls">Wall bounce</span>
+            <input type="range" data-ws="boundsRestitution" min="0" max="1" step="0.05">
+            <input type="number" class="num-input" data-w="boundsRestitution" step="0.05" min="0" max="1">
+          </div>
+          <div class="control-row">
+            <span class="control-label" title="Friction of the comp walls">Wall friction</span>
+            <input type="range" data-ws="boundsFriction" min="0" max="1" step="0.05">
+            <input type="number" class="num-input" data-w="boundsFriction" step="0.05" min="0" max="1">
+          </div>
+          <div class="control-row">
+            <span class="control-label" title="Half-depth of the world in px: back wall at +depth, front wall at -depth. 0 = comp width">Depth</span>
+            <input type="range" data-ws="depth" min="0" max="3000" step="50">
+            <input type="number" class="num-input" data-w="depth" step="50" min="0"><span class="unit">px</span>
+          </div>
+          <div class="control-row">
+            <span class="control-label" title="Default thickness (px) given to flat layers">Card thick.</span>
+            <input type="range" data-ws="cardThickness" min="1" max="200" step="1">
+            <input type="number" class="num-input" data-w="cardThickness" step="1" min="0.1"><span class="unit">px</span>
+          </div>
+          <div class="control-row">
+            <span class="control-label" title="Physics substeps per frame — more = more stable, slower">Precision</span>
+            <input type="range" data-ws="substeps" min="1" max="16" step="1">
+            <input type="number" class="num-input" data-w="substeps" step="1" min="1" max="60">
+          </div>
+          <div class="control-row">
+            <span class="control-label" title="Constraint solver iterations per substep">Solver</span>
+            <input type="range" data-ws="solverIterations" min="1" max="40" step="1">
+            <input type="number" class="num-input" data-w="solverIterations" step="1" min="1" max="60">
+          </div>
 
-    <section class="panel" id="blastPanel">
-      <div class="section-title">
-        Blasts <span class="muted" id="blastCount"></span>
-        <span class="spacer"></span>
-        <label class="chk" title="While on, clicking the preview moves the selected blast there (sets the two coordinates visible in the current view; in 3D the click lands on the blast's Z plane)"><input type="checkbox" id="blastPlace"> place by click</label>
-        <button class="btn small" id="blastAdd" title="Add a blast at the current preview frame, in the comp center (z = 0)">+ Blast</button>
+          <div class="control-row wrap" style="padding-top: 8px">
+            <span class="control-label">Walls</span>
+            <div class="pill-group walls">
+              <label class="chip-toggle" title="Bottom of the comp"><input type="checkbox" data-w="floor"><span>floor</span></label>
+              <label class="chip-toggle" title="Top of the comp"><input type="checkbox" data-w="ceiling"><span>ceiling</span></label>
+              <label class="chip-toggle"><input type="checkbox" data-w="left"><span>left</span></label>
+              <label class="chip-toggle"><input type="checkbox" data-w="right"><span>right</span></label>
+              <label class="chip-toggle" title="Wall at +depth (behind the comp plane)"><input type="checkbox" data-w="back"><span>back</span></label>
+              <label class="chip-toggle" title="Wall at -depth (towards the camera)"><input type="checkbox" data-w="front"><span>front</span></label>
+            </div>
+          </div>
+          <div class="toggle-grid">
+            <label class="toggle-item" title="Let resting bodies fall asleep (faster, more stable stacks)">
+              <span class="toggle-label">Allow sleep</span>
+              <span class="toggle-switch"><input type="checkbox" data-w="allowSleep"><span class="toggle-slider"></span></span>
+            </label>
+          </div>
+          <div class="control-row">
+            <span class="control-label">Range</span>
+            <input type="number" class="num-input" id="startFrame" step="1" min="0" title="Start frame">
+            <span class="dash">&ndash;</span>
+            <input type="number" class="num-input" id="endFrame" step="1" min="0" title="End frame">
+            <span class="spacer"></span>
+            <div class="pill-group">
+              <button class="chip tiny" id="rangeWork">work area</button>
+              <button class="chip tiny" id="rangeComp">comp</button>
+            </div>
+          </div>
+        </div>
       </div>
-      <div id="blastList" class="blast-list"></div>
-      <div id="blastDetail" class="body-detail hidden"></div>
-    </section>
 
-    <section class="panel bodies">
-      <div class="section-title">
-        Bodies <span class="muted" id="bodyCount"></span>
-        <span class="spacer"></span>
-        <button class="btn small" data-setall="dynamic">All dynamic</button>
-        <button class="btn small" data-setall="static">All static</button>
+      <!-- 02 Bodies -->
+      <div class="card" id="bodiesCard">
+        <div class="card-head" data-collapse="bodiesCard">
+          <span class="card-title"><span class="step">02</span>Bodies <span class="count" id="bodyCount"></span></span>
+          <div class="head-actions" data-nocollapse>
+            <button class="chip tiny" data-setall="dynamic">all dynamic</button>
+            <button class="chip tiny" data-setall="static">all static</button>
+          </div>
+          <span class="chev">&#9660;</span>
+        </div>
+        <div class="card-body no-pad">
+          <div id="bodyList" class="body-list"></div>
+          <div id="bodyDetail" class="body-detail hidden"></div>
+        </div>
       </div>
-      <div id="bodyList" class="body-list"></div>
-      <div id="bodyDetail" class="body-detail hidden"></div>
-    </section>
 
-    <section class="panel bake">
-      <div class="row wrap">
-        <label class="chk"><input type="checkbox" data-b="unparent"> unparent</label>
-        <label class="chk"><input type="checkbox" data-b="clearRange"> clear keys in range</label>
-        <label class="chk"><input type="checkbox" data-b="linear"> linear keys</label>
-        <label class="chk"><input type="checkbox" data-b="rotation"> rotation</label>
-        <label class="chk" title="Turn 2D layers into 3D layers so they get Position Z and Rotation X/Y keys"><input type="checkbox" data-b="make3D"> make 2D layers 3D</label>
-        <label class="chk">every <input type="number" data-b="step" min="1" max="10" step="1" class="tiny"> f</label>
+      <!-- 03 Blasts -->
+      <div class="card" id="blastCard">
+        <div class="card-head" data-collapse="blastCard">
+          <span class="card-title"><span class="step">03</span>Blasts <span class="count" id="blastCount"></span></span>
+          <div class="head-actions" data-nocollapse>
+            <label class="chip-toggle" title="While on, clicking the preview moves the selected blast there (sets the two coordinates visible in the current view; in 3D the click lands on the blast's Z plane)"><input type="checkbox" id="blastPlace"><span>place by click</span></label>
+            <button class="chip tiny" id="blastAdd" title="Add a blast at the current preview frame, in the comp center (z = 0)">+ blast</button>
+          </div>
+          <span class="chev">&#9660;</span>
+        </div>
+        <div class="card-body no-pad">
+          <div id="blastList" class="blast-list"></div>
+          <div id="blastDetail" class="body-detail hidden"></div>
+        </div>
       </div>
-      <button class="btn primary" id="bakeBtn">Bake to keyframes</button>
-    </section>
 
-    <footer id="status">Loading…</footer>
+      <!-- 04 Bake -->
+      <div class="card" id="bakeCard">
+        <div class="card-head" data-collapse="bakeCard">
+          <span class="card-title"><span class="step">04</span>Bake</span>
+          <span class="chev">&#9660;</span>
+        </div>
+        <div class="card-body">
+          <div class="toggle-grid">
+            <label class="toggle-item" title="Remove the parent so the baked world-space keys read correctly">
+              <span class="toggle-label">Unparent</span>
+              <span class="toggle-switch"><input type="checkbox" data-b="unparent"><span class="toggle-slider"></span></span>
+            </label>
+            <label class="toggle-item" title="Delete existing Position / Rotation keys inside the baked range first">
+              <span class="toggle-label">Clear keys in range</span>
+              <span class="toggle-switch"><input type="checkbox" data-b="clearRange"><span class="toggle-slider"></span></span>
+            </label>
+            <label class="toggle-item" title="Linear keyframes (no auto-bezier smoothing between samples)">
+              <span class="toggle-label">Linear keys</span>
+              <span class="toggle-switch"><input type="checkbox" data-b="linear"><span class="toggle-slider"></span></span>
+            </label>
+            <label class="toggle-item" title="Also bake Rotation X/Y/Z">
+              <span class="toggle-label">Rotation</span>
+              <span class="toggle-switch"><input type="checkbox" data-b="rotation"><span class="toggle-slider"></span></span>
+            </label>
+            <label class="toggle-item" title="Turn 2D layers into 3D layers so they get Position Z and Rotation X/Y keys">
+              <span class="toggle-label">Make 2D layers 3D</span>
+              <span class="toggle-switch"><input type="checkbox" data-b="make3D"><span class="toggle-slider"></span></span>
+            </label>
+            <label class="toggle-item" title="Write a key every N frames (thinner timelines, faster bake)">
+              <span class="toggle-label">Key every</span>
+              <span class="every"><input type="number" class="num-input tiny" data-b="step" min="1" max="10" step="1"> f</span>
+            </label>
+          </div>
+          <button class="run-btn" id="bakeBtn">BAKE TO KEYFRAMES</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-bar" id="status">Loading&hellip;</div>
+    <div class="footer"><div class="footer-text">Made by <span>MICKEY PERRY</span></div></div>
   </div>
 
   <script src="cannon-es.umd.js"></script>

@@ -22,7 +22,7 @@
   function $$(s, r) { return [].slice.call((r || document).querySelectorAll(s)); }
   var statusEl = $('#status'), canvas = $('#cv'), ctx = canvas.getContext('2d');
 
-  function setStatus(text, kind) { statusEl.textContent = text; statusEl.className = kind || ''; }
+  function setStatus(text, kind) { statusEl.textContent = text; statusEl.className = 'status-bar' + (kind ? ' ' + kind : ''); }
   function num(v, d) { v = parseFloat(v); return isFinite(v) ? v : d; }
 
   // ---------- host bridge ----------
@@ -117,9 +117,33 @@
       var k = el.getAttribute('data-w');
       if (el.type === 'checkbox') el.checked = !!state.world[k]; else el.value = state.world[k];
     });
+    syncSliders();
     $('#startFrame').value = state.range.startFrame;
     $('#endFrame').value = state.range.endFrame;
   }
+  // slider + number pairs: the range is a convenience for the useful span, the number box accepts anything
+  function paintSlider(r) {
+    var mn = num(r.min, 0), mx = num(r.max, 1), v = num(r.value, mn);
+    r.style.setProperty('--p', (mx > mn ? Math.max(0, Math.min(1, (v - mn) / (mx - mn))) * 100 : 0) + '%');
+  }
+  function syncSliders() {
+    $$('[data-ws]').forEach(function (r) {
+      var v = state.world[r.getAttribute('data-ws')];
+      if (typeof v === 'number') r.value = v;
+      paintSlider(r);
+    });
+  }
+  $$('[data-ws]').forEach(function (r) {
+    r.addEventListener('input', function () {
+      var k = r.getAttribute('data-ws'), n = $('[data-w="' + k + '"]');
+      paintSlider(r);
+      if (!n) return;
+      n.value = r.value;
+      n.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  });
+  // frame slider progress fill
+  $('#frameSlider').addEventListener('input', function () { paintSlider(this); });
   $$('[data-w]').forEach(function (el) {
     el.addEventListener('change', function () {
       var k = el.getAttribute('data-w');
@@ -130,7 +154,16 @@
       if (k === 'depth' && state.world.depth < 0) state.world.depth = 0;
       if (k === 'cardThickness' && state.world.cardThickness <= 0) state.world.cardThickness = 1;
       if (k === 'depth' || k === 'cardThickness' || k === 'solverIterations') el.value = state.world[k];
+      syncSliders();
       persist(); scheduleSim(); draw();
+    });
+  });
+  // collapsible cards (clicks on chips inside the header don't collapse)
+  $$('.card-head[data-collapse]').forEach(function (head) {
+    head.addEventListener('click', function (e) {
+      if (e.target.closest('[data-nocollapse]')) return;
+      var card = document.getElementById(head.getAttribute('data-collapse'));
+      if (card) card.classList.toggle('collapsed');
     });
   });
   function setRange(s, e) {
@@ -174,11 +207,11 @@
       row.setAttribute('data-id', info.id);
       row.title = info.supported ? (info.kind + (info.is3D ? ' · 3D layer' : ' · 2D layer') + (info.hasParent ? ' · parented' : '') + (info.hasKeys ? ' · animated' : '')) : info.reason;
       row.innerHTML =
-        '<input type="checkbox" data-inc' + (cfg.include ? ' checked' : '') + (info.supported ? '' : ' disabled') + '>' +
+        '<label class="toggle-switch mini"><input type="checkbox" data-inc' + (cfg.include ? ' checked' : '') + (info.supported ? '' : ' disabled') + '><span class="toggle-slider"></span></label>' +
         '<div class="swatch t-' + cfg.type + '"></div>' +
-        '<div class="name">' + escapeHtml(info.name) + '<small>' + info.kind + '</small>' + badge3D(info) + modelBadge(info) + '</div>' +
-        '<select data-type>' + optionList(TYPES, cfg.type) + '</select>' +
-        '<select data-shape>' + optionList(SHAPES, cfg.shape) + '</select>' +
+        '<div class="name"><span class="txt">' + escapeHtml(info.name) + '</span><small>' + info.kind + '</small>' + badge3D(info) + modelBadge(info) + '</div>' +
+        '<select class="sel t-' + cfg.type + '" data-type>' + optionList(TYPES, cfg.type) + '</select>' +
+        '<select class="sel" data-shape>' + optionList(SHAPES, cfg.shape) + '</select>' +
         '<div class="caret">' + (state.selectedId === info.id ? '&#9662;' : '&#9656;') + '</div>';
       list.appendChild(row);
     });
@@ -198,7 +231,7 @@
     persist(); renderBodies(); scheduleSim();
   });
   $('#bodyList').addEventListener('click', function (e) {
-    if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || e.target.tagName === 'OPTION') return;
+    if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || e.target.tagName === 'OPTION' || e.target.closest('.toggle-switch')) return;
     var row = e.target.closest('.body-row'); if (!row) return;
     var id = parseInt(row.getAttribute('data-id'), 10);
     state.selectedId = (state.selectedId === id) ? null : id;
@@ -364,10 +397,10 @@
     return 'FRONT  x →  y ↓';
   }
   function renderViewButtons() {
-    $$('[data-view]').forEach(function (b) { b.className = 'btn small' + (b.getAttribute('data-view') === state.viewMode ? ' active' : ''); });
+    $$('[data-view]').forEach(function (b) { b.className = 'chip' + (b.getAttribute('data-view') === state.viewMode ? ' active' : ''); });
     var is3d = state.viewMode === '3d', hint = $('#viewHint'), hint3d = $('#viewHint3d');
     if (hint) hint.textContent = is3d ? 'click sets X,Y on the blast’s Z plane' : (state.viewMode === 'front' ? 'click sets X,Y' : (state.viewMode === 'top' ? 'click sets X,Z' : 'click sets Z,Y'));
-    if (hint3d) hint3d.className = 'transport views view-hint muted' + (is3d ? '' : ' hidden');
+    if (hint3d) hint3d.className = 'view-row hint' + (is3d ? '' : ' hidden');
     updateCursor();
   }
   function updateCursor() {
@@ -689,7 +722,7 @@
       var row = document.createElement('div');
       row.className = 'blast-row' + (b.enabled === false ? ' off' : '') + (state.selectedBlast === i ? ' selected' : '');
       row.setAttribute('data-i', i);
-      row.innerHTML = '<input type="checkbox" data-on' + (b.enabled !== false ? ' checked' : '') + '><div class="swatch"></div>' +
+      row.innerHTML = '<label class="toggle-switch mini"><input type="checkbox" data-on' + (b.enabled !== false ? ' checked' : '') + '><span class="toggle-slider"></span></label><div class="swatch"></div>' +
         '<div class="name">' + blastLabel(b, i) + '</div><div class="del" data-del title="Remove">&times;</div>';
       list.appendChild(row);
     });
@@ -723,7 +756,7 @@
     persist(); renderBlasts(); draw(); scheduleSim();
   });
   $('#blastList').addEventListener('click', function (e) {
-    if (e.target.tagName === 'INPUT') return;
+    if (e.target.tagName === 'INPUT' || e.target.closest('.toggle-switch')) return;
     var row = e.target.closest('.blast-row'); if (!row) return;
     var i = parseInt(row.getAttribute('data-i'), 10), del = e.target.hasAttribute('data-del');
     if (del) { state.blasts.splice(i, 1); state.selectedBlast = -1; }
@@ -874,6 +907,7 @@
     slider.max = Math.max(0, count - 1); slider.value = state.frame;
     var t = state.scene ? ((state.range.startFrame + state.frame) / fps()) : 0;
     $('#frameLabel').textContent = (state.range.startFrame + state.frame) + ' / ' + (state.range.endFrame) + ' · ' + t.toFixed(2) + 's';
+    paintSlider(slider);
     $('#playBtn').innerHTML = state.playing ? '&#10074;&#10074;' : '&#9654;';
     var bf = $('[data-bframe]'); if (bf) bf.textContent = 'Use frame ' + absFrame();
   }
