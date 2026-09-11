@@ -42,7 +42,9 @@ Free & open source · Windows · After Effects 2020+ (model layers: AE 2025+) ·
      **lock to comp plane** (2D behaviour for flat layers) and collides. Double-click a row to select the layer in AE.
 3. **World** — gravity and its angle, px per meter, substeps, time scale, bounce and friction of the bounds, which comp
    edges act as walls (floor / ceiling / left / right / **back / front** with a depth), card thickness for flat layers,
-   solver iterations, sleep, and the frame range.
+   solver iterations, sleep, and the frame range. **Dynamics ignore each other** makes every dynamic body collide only
+   with static / kinematic bodies and the walls: a hero ploughs through props and each prop flies off on its own without
+   jostling its neighbours. Per body, **collides with** = `world` / `all` / `solo` overrides it (keep stacks on `all`).
 4. **Blasts** — radial impulses at a frame and a 3D point: strength, lift, spin, radius, falloff. Place them by clicking
    in the preview.
 5. **Views** — Front, Top, Side (orthographic) and an orbitable 3D perspective. Scrub or play; **sync AE** moves the
@@ -76,6 +78,11 @@ AE bounds.
   of frozen AE. The **every N f** option thins it out.
 - Static floors and ramps are just shape layers set to `static`. The comp floor is a wall by default, so you don't
   need one for a simple drop.
+- **Hero running through props:** a keyframed (or parented) shape layer as the `kinematic` collider, shape `auto`, a
+  thickness of ~200 px; props `dormant` so they sit still until hit; **Dynamics ignore each other** on; bounce ~0.6 so
+  they fly ahead instead of riding the collider. Bake never touches kinematic layers.
+- Baking a `kinematic` proxy by mistake (leaving it `dynamic`) replaces its motion with keys — undo, or clear the keys
+  and re-parent it.
 
 ## Layout
 

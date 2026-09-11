@@ -14,6 +14,7 @@
 
   var Vec3 = CANNON.Vec3, Quat = CANNON.Quaternion, DEG = Math.PI / 180, RAD = 180 / Math.PI, TWO_PI = Math.PI * 2;
   var MAX_HULL = 64;          // max outline points of an extruded hull (x2 vertices with the extrusion)
+  var GROUP_WORLD = 1, GROUP_DYNAMIC = 2;   // collisionFilterGroup bits
   var GIMBAL_EPS = 1e-7;      // |cos(middle angle)| below this => degenerate Euler (gimbal lock)
 
   var SIM3D = {};
@@ -24,13 +25,18 @@
   SIM3D.defaultWorld = function () {
     return { gravity: 9.8, gravityAngle: 90, ppm: 100, substeps: 4, solverIterations: 10, timeScale: 1,
       floor: true, ceiling: false, left: false, right: false, back: false, front: false, depth: 0,
-      boundsFriction: 0.5, boundsRestitution: 0.2, boundsOffset: 0, allowSleep: true, cardThickness: 10 };
+      boundsFriction: 0.5, boundsRestitution: 0.2, boundsOffset: 0, allowSleep: true, cardThickness: 10,
+      // dynamics ignore each other: every dynamic/dormant body only collides with static / kinematic bodies and the
+      // bounds (props fly off the hero but never jostle each other)
+      soloDynamics: false };
   };
   SIM3D.defaultBody = function (info) {
     return { include: !!(info && info.supported && info.kind !== 'null'),
       type: (info && info.hasKeys) ? 'kinematic' : 'dynamic', shape: 'auto',
       density: 1, friction: 0.4, restitution: 0.3, linearDamping: 0.01, angularDamping: 0.05,
       fixedRotation: false, vx: 0, vy: 0, vz: 0, spin: 0, collide: true, thickness: 0,
+      // collideWith: 'all' | 'solo' (only static/kinematic + bounds) | 'world' (follow the world's soloDynamics)
+      collideWith: 'world',
       // planar: move in x/y and rotate about z only (the 2D panel's behaviour). Default for 2D layers: a thin card
       // standing on its edge is not a stable 3D configuration, so unconstrained 2D cards would topple on landing.
       planar: !(info && info.is3D) };
@@ -489,6 +495,10 @@
         fixedRotation: !!cfg.fixedRotation,
         allowSleep: allowSleep || cfg.type === 'dormant'
       });
+      // collision groups: 1 = static / kinematic / bounds planes (cannon default), 2 = dynamic & dormant
+      body.collisionFilterGroup = isDyn ? GROUP_DYNAMIC : GROUP_WORLD;
+      var solo = cfg.collideWith === 'solo' || (cfg.collideWith !== 'all' && w.soloDynamics);
+      if (isDyn && solo) body.collisionFilterMask = GROUP_WORLD;
       if (cfg.collide === false) body.collisionFilterMask = 0;
       var planar = (cfg.planar === undefined) ? !info.is3D : !!cfg.planar;
       if (planar && isDyn) { body.linearFactor.set(1, 1, 0); body.angularFactor.set(0, 0, 1); }
